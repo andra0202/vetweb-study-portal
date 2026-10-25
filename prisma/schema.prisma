@@ -1,0 +1,19 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+enum SessionState { CONSENTED TASK_IN_PROGRESS VERIFIED INCOMPLETE REVIEW_PENDING SURVEY_SUBMITTED CLOSED }
+enum VerificationOutcome { VERIFIED INCOMPLETE TECHNICAL_ERROR MANUAL_OVERRIDE }
+enum PaymentState { PENDING_REVIEW APPROVED SENT FAILED INVALID_NUMBER DECLINED RAFFLE_ELIGIBLE SELECTED_WINNER }
+enum Role { RESEARCHER PAYMENT_ADMIN STUDY_ADMIN SYSTEM_ADMIN }
+
+model Study { id String @id @default(cuid()) title String status String sessions StudySession[] createdAt DateTime @default(now()) }
+model StudySession { id String @id @default(cuid()) studyId String study Study @relation(fields:[studyId],references:[id]) state SessionState @default(CONSENTED) taskVersion String consent ConsentRecord? verification VerificationDecision? response QuestionnaireResponse? payment PaymentClaim? createdAt DateTime @default(now()) expiresAt DateTime }
+model ConsentRecord { id String @id @default(cuid()) sessionId String @unique session StudySession @relation(fields:[sessionId],references:[id]) version String agreedAt DateTime @default(now()) withdrawnAt DateTime? }
+model VerificationToken { id String @id @default(cuid()) sessionId String jtiHash String @unique keyId String expiresAt DateTime revokedAt DateTime? createdAt DateTime @default(now()) }
+model VerificationEvent { id String @id @default(cuid()) sessionId String eventType String occurredAt DateTime evidenceDigest String? idempotencyKey String @unique createdAt DateTime @default(now()) }
+model VerificationDecision { id String @id @default(cuid()) sessionId String @unique session StudySession @relation(fields:[sessionId],references:[id]) outcome VerificationOutcome reasons Json criteria Json source String createdAt DateTime @default(now()) reviewerId String? }
+model QuestionnaireResponse { id String @id @default(cuid()) sessionId String @unique session StudySession @relation(fields:[sessionId],references:[id]) definitionVersion String answers Json submittedAt DateTime @default(now()) }
+model PaymentClaim { id String @id @default(cuid()) sessionId String @unique session StudySession @relation(fields:[sessionId],references:[id]) encryptedNumber String duplicateHash String @unique state PaymentState @default(PENDING_REVIEW) referenceCode String @unique createdAt DateTime @default(now()) updatedAt DateTime @updatedAt }
+model StaffAccount { id String @id @default(cuid()) entraSubject String @unique email String @unique roles RoleAssignment[] }
+model RoleAssignment { id String @id @default(cuid()) accountId String account StaffAccount @relation(fields:[accountId],references:[id]) role Role studyId String? active Boolean @default(true) }
+model AuditLog { id String @id @default(cuid()) actorId String? action String objectType String objectId String occurredAt DateTime @default(now()) metadata Json? }
