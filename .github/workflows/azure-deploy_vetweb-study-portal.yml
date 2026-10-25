@@ -36,12 +36,10 @@ jobs:
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: |
-            .
-            !.git/**
-          # Next.js stores its compiled CSS, JavaScript, and standalone server
-          # in .next. GitHub Actions otherwise skips hidden folders here.
+          name: nextjs-standalone
+          # Deploy only Next.js's self-contained production server. This keeps
+          # every HTML, CSS, JavaScript, and image file from one build together.
+          path: .next/standalone
           include-hidden-files: true
 
   deploy:
@@ -55,7 +53,8 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: node-app
+          name: nextjs-standalone
+          path: release
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -64,11 +63,17 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_78F86AE3F5594DC5953DC7470CBF634C }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_423FDA9C60EF48938A7A0DE3C5CD2873 }}
 
+      - name: Configure standalone startup
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az webapp config set --resource-group rg-vetweb-study-dev --name vetweb-study-portal --startup-file "node server.js"
+
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'vetweb-study-portal'
           slot-name: 'Production'
-          package: .
+          package: ./release
           
