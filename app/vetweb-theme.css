@@ -9,6 +9,7 @@
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 4% 13%, rgba(197, 105, 199, .16) 0 52px, transparent 53px),
     radial-gradient(circle at 94% 8%, rgba(232, 204, 238, .88) 0 76px, transparent 77px),
@@ -19,9 +20,27 @@ body {
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  width: 46vw;
+  height: 46vw;
+  min-width: 360px;
+  min-height: 360px;
+  right: -18vw;
+  top: 28vh;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(206, 109, 203, .18), rgba(255,255,255,0) 68%);
+  filter: blur(5px);
+  animation: ambient-drift 13s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
 .shell {
   width: min(100%, 720px);
   padding-top: 34px;
+  position: relative;
 }
 
 .site-header {
@@ -78,11 +97,23 @@ body {
 }
 
 .progress {
+  position: relative;
   height: 9px;
   padding: 2px;
   background: rgba(217, 187, 226, .62);
   border-radius: 99px;
   box-shadow: inset 0 1px 3px rgba(102, 20, 110, .10);
+}
+
+.progress::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 18%, rgba(255,255,255,.75) 42%, transparent 63%);
+  background-size: 240% 100%;
+  animation: progress-glint 3.8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .progress span {
@@ -103,6 +134,15 @@ body {
     rgba(255, 255, 255, .93);
   box-shadow: 0 18px 50px rgba(105, 31, 112, .12), 0 3px 10px rgba(105, 31, 112, .05);
   animation: rise-in .5s .08s ease-out both;
+  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(162, 45, 167, .36);
+    box-shadow: 0 25px 60px rgba(105, 31, 112, .16), 0 5px 15px rgba(105, 31, 112, .06);
+  }
 }
 
 .card::after {
@@ -125,9 +165,23 @@ body {
     linear-gradient(125deg, rgba(255,255,255,.98), rgba(255,249,255,.95) 59%, rgba(249,232,250,.98));
 }
 
-.eyebrow { color: var(--vet-purple); letter-spacing: .14em; font-size: .7rem; }
+.hero::before {
+  content: "";
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  right: -120px;
+  top: -120px;
+  border-radius: 50%;
+  border: 1px solid rgba(162, 45, 167, .14);
+  box-shadow: 0 0 0 20px rgba(255,255,255,.11), 0 0 0 42px rgba(162,45,167,.035);
+  animation: halo-breathe 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.eyebrow { color: var(--vet-purple); letter-spacing: .14em; font-size: .7rem; animation: fade-slide .6s .17s ease-out both; }
 h1, h2 { color: var(--vet-plum); letter-spacing: -.035em; }
-h1 { max-width: 580px; }
+h1 { max-width: 580px; text-wrap: balance; }
 h2 { font-size: clamp(1.65rem, 4vw, 2.15rem); }
 
 .notice {
@@ -142,6 +196,15 @@ dl > div {
   border: 1px solid rgba(162, 45, 167, .13);
   border-radius: 14px;
   background: rgba(255,255,255,.58);
+  transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
+}
+
+@media (hover: hover) {
+  dl > div:hover {
+    transform: translateY(-3px);
+    background: rgba(255,255,255,.9);
+    box-shadow: 0 9px 18px rgba(162,45,167,.09);
+  }
 }
 
 dt { color: #96609b; }
@@ -189,6 +252,14 @@ input:focus, select:focus, textarea:focus { border-color: #b747b5; box-shadow: 0
 .fine, .optional { color: #87548c; }
 
 @keyframes rise-in { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fade-slide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes ambient-drift { from { transform: translate3d(0, 0, 0) scale(.94); } to { transform: translate3d(-4vw, -5vh, 0) scale(1.08); } }
+@keyframes halo-breathe { 0%, 100% { transform: scale(.94); opacity: .65; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes progress-glint { 0%, 35% { background-position: 125% 0; } 70%, 100% { background-position: -125% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
 
 @media (max-width: 430px) {
   .shell { padding: 20px 14px 45px; }
