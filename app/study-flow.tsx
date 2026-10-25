@@ -37,8 +37,8 @@ export default function StudyFlow() {
 
   return <main className="shell">
     <header className="site-header">
-      <div className="logo-panel"><img className="vetweb-logo" src="/images/vetweb-logo-transparent.png" alt="VetWeb" /></div>
       <div className="portal-identity"><span>VETWEB RESEARCH</span><b>Study Portal</b><small>Research participation portal</small></div>
+      <div className="logo-panel"><img className="vetweb-logo" src="/images/vetweb-logo-transparent.png" alt="VetWeb" /></div>
     </header>
     <div className="progress" aria-label={`Progress: step ${progress + 1} of ${steps.length}`}><span style={{ width: `${((progress + 1) / steps.length) * 100}%` }} /></div>
     {step === "welcome" && <section className="card hero"><p className="eyebrow">VETWEB RESEARCH STUDY</p><h1>Welcome, and thank you for scanning.</h1><p>You will read the instructions, complete one VetWeb task, answer a short questionnaire, and provide a GCash number for the study incentive or raffle.</p><div className="notice"><b>Before you start:</b> Use the same browser for VetWeb and this questionnaire. The questionnaire stays locked until the task is verified.</div><dl><div><dt>Estimated time</dt><dd>10–15 minutes</dd></div><div><dt>After the study</dt><dd>Researcher review and incentive processing</dd></div></dl><button onClick={() => move("instructions")}>Read instructions</button><p className="fine">Study contact details, eligibility criteria, and approved consent information must be completed before public launch.</p></section>}

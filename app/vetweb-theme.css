@@ -44,7 +44,8 @@ body::before {
 }
 
 .site-header {
-  gap: 18px;
+  justify-content: space-between;
+  gap: 22px;
   margin: 0 0 18px;
   color: var(--vet-ink);
   animation: rise-in .55s ease-out both;
@@ -63,9 +64,48 @@ body::before {
   box-shadow: 0 9px 20px rgba(105, 31, 112, .10), inset 0 1px rgba(255,255,255,.85);
 }
 
-.portal-identity { display: grid; gap: 1px; }
+.portal-identity {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  min-height: 66px;
+  padding: 9px 0 8px 76px;
+}
+
+.portal-identity::before {
+  content: "V";
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 22px 22px 22px 8px;
+  background: linear-gradient(145deg, #de79d6, var(--vet-purple) 58%, var(--vet-plum));
+  box-shadow: 0 11px 23px rgba(105,31,112,.2), inset 0 1px rgba(255,255,255,.5);
+  color: white;
+  font-size: 1.45rem;
+  font-weight: 900;
+  font-family: Georgia, serif;
+  transform: rotate(-5deg);
+}
+
+.portal-identity::after {
+  content: "";
+  position: absolute;
+  left: 48px;
+  bottom: 7px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #f0c7ee;
+  border-radius: 50%;
+  background: #fffaff;
+}
+
 .portal-identity > span { color: var(--vet-purple); font-size: .62rem; font-weight: 800; letter-spacing: .12em; }
-.portal-identity b { font-size: 1.2rem; letter-spacing: -.03em; line-height: 1.05; }
+.portal-identity b { font-size: 1.28rem; letter-spacing: -.03em; line-height: 1.05; }
 .portal-identity small { color: #87548c; font-weight: 600; }
 
 .brand-mark {
@@ -264,6 +304,9 @@ input:focus, select:focus, textarea:focus { border-color: #b747b5; box-shadow: 0
 @media (max-width: 430px) {
   .shell { padding: 20px 14px 45px; }
   .site-header { gap: 10px; margin-bottom: 14px; }
+  .portal-identity { min-height: 57px; padding: 8px 0 7px 62px; }
+  .portal-identity::before { width: 51px; height: 51px; border-radius: 18px 18px 18px 7px; font-size: 1.15rem; }
+  .portal-identity::after { left: 39px; bottom: 7px; width: 13px; height: 13px; border-width: 2px; }
   .logo-panel { width: 145px; min-width: 145px; height: 72px; padding: 9px 11px; border-radius: 17px; }
   .vetweb-logo { max-width: 122px; height: 50px; }
   .portal-identity > span { font-size: .55rem; }
