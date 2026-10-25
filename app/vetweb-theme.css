@@ -43,9 +43,10 @@ body::before {
   position: relative;
 }
 
+.shell--welcome { width: min(100%, 1120px); }
+
 .site-header {
-  justify-content: space-between;
-  gap: 22px;
+  gap: 18px;
   margin: 0 0 18px;
   color: var(--vet-ink);
   animation: rise-in .55s ease-out both;
@@ -65,47 +66,11 @@ body::before {
 }
 
 .portal-identity {
-  position: relative;
   display: grid;
   gap: 1px;
-  min-height: 66px;
-  padding: 9px 0 8px 76px;
 }
-
-.portal-identity::before {
-  content: "V";
-  position: absolute;
-  left: 0;
-  top: 0;
-  display: grid;
-  place-items: center;
-  width: 62px;
-  height: 62px;
-  border: 1px solid rgba(255,255,255,.8);
-  border-radius: 22px 22px 22px 8px;
-  background: linear-gradient(145deg, #de79d6, var(--vet-purple) 58%, var(--vet-plum));
-  box-shadow: 0 11px 23px rgba(105,31,112,.2), inset 0 1px rgba(255,255,255,.5);
-  color: white;
-  font-size: 1.45rem;
-  font-weight: 900;
-  font-family: Georgia, serif;
-  transform: rotate(-5deg);
-}
-
-.portal-identity::after {
-  content: "";
-  position: absolute;
-  left: 48px;
-  bottom: 7px;
-  width: 16px;
-  height: 16px;
-  border: 3px solid #f0c7ee;
-  border-radius: 50%;
-  background: #fffaff;
-}
-
 .portal-identity > span { color: var(--vet-purple); font-size: .62rem; font-weight: 800; letter-spacing: .12em; }
-.portal-identity b { font-size: 1.28rem; letter-spacing: -.03em; line-height: 1.05; }
+.portal-identity b { font-size: 1.2rem; letter-spacing: -.03em; line-height: 1.05; }
 .portal-identity small { color: #87548c; font-weight: 600; }
 
 .brand-mark {
@@ -204,6 +169,48 @@ body::before {
     radial-gradient(circle at 87% 19%, rgba(255,255,255,.92) 0 21px, transparent 22px),
     linear-gradient(125deg, rgba(255,255,255,.98), rgba(255,249,255,.95) 59%, rgba(249,232,250,.98));
 }
+
+.welcome-stage {
+  display: grid;
+  grid-template-columns: minmax(270px, .78fr) minmax(0, 1.32fr);
+  gap: 28px;
+  align-items: stretch;
+}
+
+.study-intro {
+  position: relative;
+  overflow: hidden;
+  padding: 34px 30px;
+  border: 1px solid rgba(162, 45, 167, .22);
+  border-radius: 26px;
+  background: linear-gradient(155deg, rgba(116,22,125,.98), #912795 55%, #c04bbb);
+  color: white;
+  box-shadow: 0 20px 48px rgba(105, 31, 112, .22);
+  animation: rise-in .5s ease-out both;
+}
+
+.study-intro::before, .study-intro::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.study-intro::before { width: 230px; height: 230px; top: -125px; left: -105px; }
+.study-intro::after { width: 170px; height: 170px; right: -104px; bottom: -88px; box-shadow: 0 0 0 20px rgba(255,255,255,.05); }
+.study-intro > * { position: relative; z-index: 1; }
+.study-intro .eyebrow { color: #f8cafa; }
+.study-intro h2 { margin: 0 0 15px; color: white; font-size: clamp(1.95rem, 3.6vw, 2.65rem); line-height: 1.04; }
+.study-intro > p:not(.eyebrow) { color: rgba(255,255,255,.84); margin: 0; }
+
+.journey { display: grid; gap: 16px; margin: 30px 0; padding: 0; list-style: none; }
+.journey li { display: flex; align-items: center; gap: 11px; }
+.journey li > span { display: grid; place-items: center; flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.35); border-radius: 11px; background: rgba(255,255,255,.12); color: #fff4ff; font-size: .7rem; font-weight: 800; }
+.journey b { display: block; color: white; font-size: .9rem; }
+.journey small { display: block; margin-top: 1px; color: rgba(255,255,255,.7); font-size: .75rem; line-height: 1.35; }
+.intro-footer { display: flex; gap: 9px; align-items: center; padding-top: 17px; border-top: 1px solid rgba(255,255,255,.2); }
+.intro-footer span { color: #ffd5fd; font-size: 1.05rem; }
+.intro-footer p { margin: 0; color: rgba(255,255,255,.8); font-size: .78rem; line-height: 1.35; }
 
 .hero::before {
   content: "";
@@ -304,9 +311,6 @@ input:focus, select:focus, textarea:focus { border-color: #b747b5; box-shadow: 0
 @media (max-width: 430px) {
   .shell { padding: 20px 14px 45px; }
   .site-header { gap: 10px; margin-bottom: 14px; }
-  .portal-identity { min-height: 57px; padding: 8px 0 7px 62px; }
-  .portal-identity::before { width: 51px; height: 51px; border-radius: 18px 18px 18px 7px; font-size: 1.15rem; }
-  .portal-identity::after { left: 39px; bottom: 7px; width: 13px; height: 13px; border-width: 2px; }
   .logo-panel { width: 145px; min-width: 145px; height: 72px; padding: 9px 11px; border-radius: 17px; }
   .vetweb-logo { max-width: 122px; height: 50px; }
   .portal-identity > span { font-size: .55rem; }
@@ -315,4 +319,17 @@ input:focus, select:focus, textarea:focus { border-color: #b747b5; box-shadow: 0
   .card, .hero { border-radius: 22px; padding: 26px 21px; }
   .hero { padding-top: 30px; }
   h1 { font-size: 2.15rem; }
+}
+
+@media (max-width: 820px) {
+  .shell--welcome { width: min(100%, 720px); }
+  .welcome-stage { grid-template-columns: 1fr; gap: 18px; }
+  .study-intro { padding: 28px 25px; }
+  .journey { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 23px 0; }
+  .journey li { align-items: flex-start; flex-direction: column; gap: 7px; }
+}
+
+@media (max-width: 520px) {
+  .journey { grid-template-columns: 1fr; gap: 13px; }
+  .journey li { align-items: center; flex-direction: row; gap: 11px; }
 }
