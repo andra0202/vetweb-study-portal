@@ -299,6 +299,8 @@ input:focus, select:focus, textarea:focus { border-color: #b747b5; box-shadow: 0
 .fine, .optional { color: #87548c; }
 
 .questionnaire { display: grid; gap: 20px; }
+.survey-wizard { width: min(100%, 760px); margin: 25px auto 0; }
+.survey-wizard form { display: grid; gap: 20px; }
 .survey-intro { margin-top: 25px; }
 .survey-intro h2, .respondent-card h3, .survey-heading h3 { margin-top: 0; }
 .rating-key { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 22px; }
@@ -341,6 +343,18 @@ legend { color: var(--vet-ink); font-weight: 800; line-height: 1.4; }
 .feedback-card label { margin-top: 0; }
 .feedback-card textarea { min-height: 130px; resize: vertical; }
 .eligibility-message { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: #fff1f0; border-left: 4px solid #c44365; color: #7b2940; font-weight: 700; line-height: 1.45; }
+.question-wizard-card { padding: 0; overflow: hidden; }
+.question-wizard-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 28px 30px 18px; background: linear-gradient(135deg, #fff9ff, #f9eafa); }
+.question-wizard-head .eyebrow { margin: 0 0 5px; }
+.question-wizard-head div > span { color: #6e4072; font-size: .9rem; font-weight: 800; }
+.question-wizard-head > b { color: var(--vet-plum); font-size: 1.35rem; white-space: nowrap; }
+.question-wizard-head > b small { color: #946199; font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; }
+.question-progress { height: 7px; margin: 0 30px; overflow: hidden; border-radius: 99px; background: #efd9f0; }
+.question-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7d167f, #ce59c0); transition: width .28s ease; }
+.single-question { padding: 34px 30px 20px; }
+.single-question legend { font-size: clamp(1.18rem, 3vw, 1.55rem); letter-spacing: -.02em; }
+.choose-label { margin: 22px 0 9px; color: #7a4c7f; font-size: .84rem; font-weight: 800; }
+.wizard-actions { padding: 0 30px 30px; }
 
 @keyframes rise-in { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fade-slide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
@@ -386,4 +400,8 @@ legend { color: var(--vet-ink); font-weight: 800; line-height: 1.4; }
   .rating-options { gap: 5px; }
   .rating-options label { min-height: 62px; padding: 6px 2px; border-radius: 10px; }
   .rating-options span { font-size: .55rem; }
+  .question-wizard-head { padding: 23px 20px 16px; }
+  .question-progress { margin: 0 20px; }
+  .single-question { padding: 27px 20px 16px; }
+  .wizard-actions { padding: 0 20px 22px; }
 }

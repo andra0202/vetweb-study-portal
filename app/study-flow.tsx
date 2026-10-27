@@ -58,6 +58,7 @@ const questionnaireSections = [
     ],
   },
 ];
+const questionnaireItems = questionnaireSections.flatMap(section => section.questions.map(question => ({ ...question, section: section.title })));
 
 export default function StudyFlow() {
   const [step, setStep] = useState<Step>("welcome");
@@ -67,6 +68,9 @@ export default function StudyFlow() {
   const [verified, setVerified] = useState(false);
   const [reference, setReference] = useState("");
   const [surveyMessage, setSurveyMessage] = useState("");
+  const [surveyStage, setSurveyStage] = useState<"eligibility" | "ratings" | "feedback">("eligibility");
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [ratings, setRatings] = useState<Record<string, string>>({});
   const progress = steps.indexOf(step);
   const move = (next: Step) => setStep(next);
   const openTask = async () => {
@@ -86,7 +90,7 @@ export default function StudyFlow() {
     const response = await fetch(`/api/v1/study-sessions/${encodeURIComponent(state)}`);
     if (response.ok && (await response.json() as { verified: boolean }).verified) setVerified(true);
   };
-  const submitSurvey = (event: FormEvent<HTMLFormElement>) => {
+  const startQuestionnaire = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     if (form.get("adult") !== "yes" || form.get("usedVetWeb") !== "yes") {
@@ -94,6 +98,20 @@ export default function StudyFlow() {
       return;
     }
     setSurveyMessage("");
+    setSurveyStage("ratings");
+  };
+  const continueRating = () => {
+    const current = questionnaireItems[currentQuestion];
+    if (!ratings[current.code]) {
+      setSurveyMessage("Choose one rating before continuing.");
+      return;
+    }
+    setSurveyMessage("");
+    if (currentQuestion === questionnaireItems.length - 1) setSurveyStage("feedback");
+    else setCurrentQuestion(index => index + 1);
+  };
+  const submitSurvey = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     move("reward");
   };
   const submitReward = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setReference(`VWS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`); move("done"); };
@@ -108,28 +126,35 @@ export default function StudyFlow() {
     {step === "instructions" && <section className="card"><p className="eyebrow">STEP 1 · INSTRUCTIONS</p><h2>What you need to do</h2><ol className="steps"><li>Open VetWeb from the next page.</li><li>Log in, then register one pet under your account.</li><li>Return here after VetWeb confirms the pet registration.</li><li>Answer the questionnaire and provide your incentive details.</li></ol><div className="notice">Logging in or opening VetWeb is not enough—the questionnaire unlocks only after VetWeb confirms a successful pet registration.</div><label className="check"><input type="checkbox" checked={agreed} onChange={event => setAgreed(event.target.checked)} /> <span>I am eligible to participate, understand that participation is voluntary, and agree to continue.</span></label><div className="actions"><button className="secondary" onClick={() => move("welcome")}>Back</button><button disabled={!agreed} onClick={() => move("task")}>Continue to VetWeb</button></div></section>}
     {step === "task" && <section className="card"><p className="eyebrow">STEP 2 · VETWEB TASK</p><h2>Register a pet in VetWeb</h2><p>Select the button below to open VetWeb in a new tab. Log in, then use <b>Pet Profile → Add New Pet</b> to save a pet under your account. Return here after it is successfully registered.</p><button onClick={openTask}>{taskOpened ? "Open VetWeb again" : "Open VetWeb"}</button>{taskLaunchError && <p className="fine">{taskLaunchError}</p>}<p className="fine">If the link does not open, allow pop-ups for this site and try again.</p><div className="actions"><button className="secondary" onClick={() => move("instructions")}>Back</button><button disabled={!taskOpened} onClick={() => move("checking")}>I have returned from VetWeb</button></div></section>}
     {step === "checking" && <section className="card"><p className="eyebrow">STEP 3 · VERIFICATION</p><h2>{verified ? "Pet registration verified" : "Checking pet registration"}</h2><p>VetWeb must verify that a pet was successfully registered under the participant&apos;s account before the questionnaire unlocks. Logging in or simply opening the link will not unlock it.</p><div className="notice"><b>{verified ? "Verified." : "Verification pending."}</b> {verified ? "You can now continue to the questionnaire." : "Return after you have successfully registered a pet in VetWeb, then check again."}</div>{verified ? <button onClick={() => move("survey")}>Continue to questionnaire</button> : <div className="actions"><button className="secondary" onClick={() => move("task")}>Return to VetWeb</button><button onClick={checkVerification}>Check again</button></div>}</section>}
-    {step === "survey" && <form className="questionnaire" onSubmit={submitSurvey}>
-      <section className="card survey-intro">
-        <p className="eyebrow">STEP 4 · QUESTIONNAIRE</p><h2>Tell us about your VetWeb experience</h2>
-        <p>This questionnaire evaluates VetWeb using selected ISO/IEC 25010:2011 software quality characteristics. Please answer based on the client-facing functions you used.</p>
-        <div className="notice"><b>Your answers are not yet saved.</b> The questionnaire is now fully built into the portal, but the database connection is the next step before real participant answers or GCash details can be collected.</div>
-        <div className="rating-key" aria-label="Rating scale">{ratingScale.map(({ value, label }) => <div key={value}><b>{value}</b><span>{label}</span></div>)}</div>
-      </section>
-      <section className="card respondent-card">
-        <p className="eyebrow">PART I · RESPONDENT INFORMATION</p><h3>Eligibility check</h3>
-        <div className="respondent-grid">
-          <fieldset><legend>Occupation / role</legend><div className="role-pill">Pet owner / client</div></fieldset>
-          <fieldset><legend>Are you 18 years old or above?</legend><div className="choice-row"><label><input type="radio" name="adult" value="yes" required /> Yes</label><label><input type="radio" name="adult" value="no" /> No</label></div></fieldset>
-          <fieldset><legend>Have you used VetWeb&apos;s client-facing functions?</legend><small>For example: booking, pet records, notifications, or the chatbot.</small><div className="choice-row"><label><input type="radio" name="usedVetWeb" value="yes" required /> Yes</label><label><input type="radio" name="usedVetWeb" value="no" /> No</label></div></fieldset>
-          <fieldset><legend>Have you used another veterinary clinic management, appointment, or electronic record system?</legend><div className="choice-row"><label><input type="radio" name="priorSystem" value="yes" required /> Yes</label><label><input type="radio" name="priorSystem" value="no" /> No</label></div><label className="specify">If yes, please specify <input name="priorSystemDetail" maxLength={120} placeholder="Optional" /></label></fieldset>
-        </div>
-      </section>
-      <section className="survey-questions">
-        <div className="survey-heading"><p className="eyebrow">PART II · SOFTWARE QUALITY EVALUATION</p><h3>Rate every statement</h3><p>Choose one number per statement. 5 is very acceptable; 1 is very not acceptable.</p></div>
-        {questionnaireSections.map(section => <section className="question-section" key={section.title}><h4>{section.title}</h4>{section.questions.map(question => <fieldset className="question-card" key={question.code}><div className="question-topline"><span className="question-code">{question.code}</span><span>{question.characteristic}</span></div><legend>{question.english}</legend><p className="translation">{question.filipino}</p><div className="rating-options">{ratingScale.map(({ value, label }) => <label key={value} title={label}><input type="radio" name={question.code} value={value} required /><b>{value}</b><span>{label}</span></label>)}</div></fieldset>)}</section>)}
-      </section>
-      <section className="card feedback-card"><label htmlFor="feedback"><span className="eyebrow">ADDITIONAL COMMENTS / FEEDBACK</span><textarea id="feedback" name="feedback" rows={5} maxLength={2000} placeholder="Optional: Tell us what worked well or what should be improved." /></label><p className="fine">Maximum 2,000 characters.</p>{surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}<div className="actions"><button type="button" className="secondary" onClick={() => move("checking")}>Back</button><button type="submit">Continue to incentive details</button></div></section>
-    </form>}
+    {step === "survey" && <div className="survey-wizard">
+      {surveyStage === "eligibility" && <form onSubmit={startQuestionnaire}>
+        <section className="card survey-intro">
+          <p className="eyebrow">STEP 4 · QUESTIONNAIRE</p><h2>Tell us about your VetWeb experience</h2>
+          <p>We will guide you through a few quick checks, then one statement at a time. This is designed to be calm and easy to complete on a phone.</p>
+          <div className="notice"><b>Preview mode:</b> the questionnaire is complete, but answers are not saved until the study database is connected.</div>
+          <div className="rating-key" aria-label="Rating scale">{ratingScale.map(({ value, label }) => <div key={value}><b>{value}</b><span>{label}</span></div>)}</div>
+        </section>
+        <section className="card respondent-card">
+          <p className="eyebrow">PART I · RESPONDENT INFORMATION</p><h3>Before we begin</h3>
+          <div className="respondent-grid">
+            <fieldset><legend>Occupation / role</legend><div className="role-pill">Pet owner / client</div></fieldset>
+            <fieldset><legend>Are you 18 years old or above?</legend><div className="choice-row"><label><input type="radio" name="adult" value="yes" required /> Yes</label><label><input type="radio" name="adult" value="no" /> No</label></div></fieldset>
+            <fieldset><legend>Have you used VetWeb&apos;s client-facing functions?</legend><small>For example: booking, pet records, notifications, or the chatbot.</small><div className="choice-row"><label><input type="radio" name="usedVetWeb" value="yes" required /> Yes</label><label><input type="radio" name="usedVetWeb" value="no" /> No</label></div></fieldset>
+            <fieldset><legend>Have you used another veterinary clinic management, appointment, or electronic record system?</legend><div className="choice-row"><label><input type="radio" name="priorSystem" value="yes" required /> Yes</label><label><input type="radio" name="priorSystem" value="no" /> No</label></div><label className="specify">If yes, please specify <input name="priorSystemDetail" maxLength={120} placeholder="Optional" /></label></fieldset>
+          </div>
+          {surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}
+          <div className="actions"><button type="button" className="secondary" onClick={() => move("checking")}>Back</button><button type="submit">Start rating VetWeb</button></div>
+        </section>
+      </form>}
+      {surveyStage === "ratings" && <section className="card question-wizard-card">
+        <div className="question-wizard-head"><div><p className="eyebrow">PART II · SOFTWARE QUALITY EVALUATION</p><span>{questionnaireItems[currentQuestion].section}</span></div><b>{currentQuestion + 1} <small>of {questionnaireItems.length}</small></b></div>
+        <div className="question-progress"><span style={{ width: `${((currentQuestion + 1) / questionnaireItems.length) * 100}%` }} /></div>
+        <fieldset className="single-question"><div className="question-topline"><span className="question-code">{questionnaireItems[currentQuestion].code}</span><span>{questionnaireItems[currentQuestion].characteristic}</span></div><legend>{questionnaireItems[currentQuestion].english}</legend><p className="translation">{questionnaireItems[currentQuestion].filipino}</p><p className="choose-label">How would you rate this statement?</p><div className="rating-options">{ratingScale.map(({ value, label }) => <label key={value} title={label}><input type="radio" name={questionnaireItems[currentQuestion].code} value={value} checked={ratings[questionnaireItems[currentQuestion].code] === value} onChange={() => { setRatings(current => ({ ...current, [questionnaireItems[currentQuestion].code]: value })); setSurveyMessage(""); }} /><b>{value}</b><span>{label}</span></label>)}</div></fieldset>
+        {surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}
+        <div className="actions wizard-actions"><button type="button" className="secondary" onClick={() => currentQuestion === 0 ? setSurveyStage("eligibility") : setCurrentQuestion(index => index - 1)}>Back</button><button type="button" onClick={continueRating}>{currentQuestion === questionnaireItems.length - 1 ? "Continue to feedback" : "Next statement"}</button></div>
+      </section>}
+      {surveyStage === "feedback" && <form className="card feedback-card" onSubmit={submitSurvey}><p className="eyebrow">FINAL STEP · OPTIONAL FEEDBACK</p><h2>Anything else you would like to share?</h2><p>Your ratings are complete. You may add a comment, or continue without one.</p><label htmlFor="feedback"><textarea id="feedback" name="feedback" rows={5} maxLength={2000} placeholder="Optional: Tell us what worked well or what should be improved." /></label><p className="fine">Maximum 2,000 characters.</p><div className="actions wizard-actions"><button type="button" className="secondary" onClick={() => { setSurveyStage("ratings"); setCurrentQuestion(questionnaireItems.length - 1); }}>Back</button><button type="submit">Continue to incentive details</button></div></form>}
+    </div>}
     {step === "reward" && <form className="card" onSubmit={submitReward}><p className="eyebrow">STEP 5 · INCENTIVE DETAILS</p><h2>Where should we send your incentive?</h2><p>After the survey phase ends, the research team will review verified submissions and send the approved <b>₱100 incentive</b>, or process the <b>₱1,000 raffle</b>, according to the final study rules.</p><label>GCash mobile number<input name="gcash" type="tel" inputMode="numeric" placeholder="0917 123 4567" pattern="(\\+63|0)9[0-9]{9}" title="Use a Philippine mobile number, e.g. 09171234567" required /></label><label className="check"><input required type="checkbox" /> <span>I confirm this is the GCash number the research team may use for the approved study incentive or raffle.</span></label><button type="submit">Submit and finish</button><p className="fine">GCash details must be stored separately from questionnaire answers once the production database is connected.</p></form>}
     {step === "done" && <section className="card success"><p className="eyebrow">SUBMISSION RECEIVED</p><h2>Thank you for participating.</h2><output>{reference}</output><p>Keep this reference code. The research team will process verified submissions at the end of the survey phase or according to the raffle rules.</p><p className="fine">Do not share your reference code or GCash number publicly.</p></section>}
   </main>;
