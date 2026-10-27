@@ -6,6 +6,59 @@ type Step = "welcome" | "instructions" | "task" | "checking" | "survey" | "rewar
 const steps: Step[] = ["welcome", "instructions", "task", "checking", "survey", "reward", "done"];
 const vetWebTaskUrl = process.env.NEXT_PUBLIC_VETWEB_TASK_URL || "https://vetweb.example.com";
 
+const ratingScale = [
+  { value: "5", label: "Very acceptable" },
+  { value: "4", label: "Acceptable" },
+  { value: "3", label: "Moderately acceptable" },
+  { value: "2", label: "Not acceptable" },
+  { value: "1", label: "Very not acceptable" },
+];
+
+const questionnaireSections = [
+  {
+    title: "A. Functional suitability",
+    questions: [{ code: "A4", characteristic: "Functional appropriateness", english: "VetWeb facilitates the accomplishment of specified veterinary clinic tasks and user objectives.", filipino: "Tinutulungan ng VetWeb ang mga user na maisagawa ang mga itinukoy na gawain sa veterinary clinic at makamit ang kanilang mga layunin." }],
+  },
+  {
+    title: "B. Performance efficiency",
+    questions: [
+      { code: "B1", characteristic: "Time behaviour", english: "VetWeb responds appropriately to user commands when accessing and using its web-based functions.", filipino: "Maayos na tumutugon ang VetWeb sa mga command ng user habang ina-access at ginagamit ang mga web-based function nito." },
+      { code: "B3", characteristic: "Functional correctness", english: "VetWeb provides notifications to users based on relevant appointment, queue, account, and clinic events.", filipino: "Nagbibigay ang VetWeb ng mga notification sa mga user batay sa mahahalagang appointment, queue, account, at clinic events." },
+      { code: "B4", characteristic: "Time behaviour", english: "VetWeb operates without noticeable lag or buffering during normal clinic management activities.", filipino: "Gumagana ang VetWeb nang walang kapansin-pansing lag o buffering sa karaniwang mga gawain sa pamamahala ng clinic." },
+    ],
+  },
+  {
+    title: "C. Compatibility",
+    questions: [
+      { code: "C2", characteristic: "Interoperability", english: "VetWeb can be accessed through supported internet-connected devices and browsers.", filipino: "Maaaring ma-access ang VetWeb gamit ang mga suportadong device at browser na nakakonekta sa internet." },
+      { code: "C3", characteristic: "Interoperability", english: "VetWeb displays and operates properly across supported screen sizes and browser environments.", filipino: "Maayos na naipapakita at gumagana ang VetWeb sa iba't ibang suportadong laki ng screen at browser environment." },
+    ],
+  },
+  {
+    title: "D. Usability",
+    questions: [
+      { code: "D1", characteristic: "Appropriateness recognizability", english: "VetWeb meets the needs of its intended users by providing functions appropriate to their veterinary clinic or pet-care tasks.", filipino: "Natutugunan ng VetWeb ang pangangailangan ng mga target user sa pamamagitan ng mga function na angkop sa kanilang gawain sa veterinary clinic o pag-aalaga ng alagang hayop." },
+      { code: "D2", characteristic: "Learnability", english: "VetWeb can be accessed, controlled, and operated by its intended users for their assigned tasks.", filipino: "Maaaring ma-access, makontrol, at magamit ng mga target user ang VetWeb para sa kanilang nakatalagang gawain." },
+      { code: "D3", characteristic: "User engagement", english: "VetWeb provides a clear and satisfying user interface that supports effective interaction with its functions.", filipino: "Nagbibigay ang VetWeb ng malinaw at kasiya-siyang user interface na sumusuporta sa mahusay na pakikipag-ugnayan ng user sa mga function nito." },
+      { code: "D4", characteristic: "Operability", english: "VetWeb can be utilized by its intended users to perform their assigned veterinary clinic and pet-care tasks.", filipino: "Mabilisang magagamit ng mga target user ang VetWeb upang maisagawa ang kanilang mga nakatalagang gawain sa veterinary clinic at pet-care." },
+    ],
+  },
+  {
+    title: "E. Reliability",
+    questions: [
+      { code: "E1", characteristic: "Faultlessness", english: "VetWeb performs its intended veterinary clinic functions properly during normal operation.", filipino: "Gumagana nang maayos ang mga nilalayong function ng VetWeb para sa veterinary clinic sa karaniwang operasyon." },
+      { code: "E2", characteristic: "Availability", english: "VetWeb provides relevant and accurate information needed by its intended users.", filipino: "Nagbibigay ang VetWeb ng angkop at tumpak na impormasyong kailangan ng mga target user nito." },
+    ],
+  },
+  {
+    title: "F. Security",
+    questions: [
+      { code: "F1", characteristic: "Confidentiality", english: "VetWeb restricts access to protected information and functions to authorized users.", filipino: "Nililimitahan ng VetWeb ang access sa protektadong impormasyon at mga function para lamang sa mga awtorisadong user." },
+      { code: "F4", characteristic: "Authenticity", english: "VetWeb provides individual accounts for each end user and verifies their identity before granting access.", filipino: "Nagbibigay ang VetWeb ng hiwalay na account sa bawat end user at bine-verify ang kanilang pagkakakilanlan bago sila bigyan ng access." },
+    ],
+  },
+];
+
 export default function StudyFlow() {
   const [step, setStep] = useState<Step>("welcome");
   const [agreed, setAgreed] = useState(false);
@@ -13,6 +66,7 @@ export default function StudyFlow() {
   const [taskLaunchError, setTaskLaunchError] = useState("");
   const [verified, setVerified] = useState(false);
   const [reference, setReference] = useState("");
+  const [surveyMessage, setSurveyMessage] = useState("");
   const progress = steps.indexOf(step);
   const move = (next: Step) => setStep(next);
   const openTask = async () => {
@@ -32,7 +86,16 @@ export default function StudyFlow() {
     const response = await fetch(`/api/v1/study-sessions/${encodeURIComponent(state)}`);
     if (response.ok && (await response.json() as { verified: boolean }).verified) setVerified(true);
   };
-  const submitSurvey = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); move("reward"); };
+  const submitSurvey = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    if (form.get("adult") !== "yes" || form.get("usedVetWeb") !== "yes") {
+      setSurveyMessage("This questionnaire is for pet owners or clients aged 18 or above who have used VetWeb's client-facing functions. Please return after using VetWeb if you are not yet eligible.");
+      return;
+    }
+    setSurveyMessage("");
+    move("reward");
+  };
   const submitReward = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setReference(`VWS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`); move("done"); };
 
   return <main className={`shell ${step === "welcome" ? "shell--welcome" : ""}`}>
@@ -45,7 +108,28 @@ export default function StudyFlow() {
     {step === "instructions" && <section className="card"><p className="eyebrow">STEP 1 · INSTRUCTIONS</p><h2>What you need to do</h2><ol className="steps"><li>Open the VetWeb task from the next page.</li><li>Complete the requested activity in VetWeb.</li><li>Return here after VetWeb confirms your task.</li><li>Answer the questionnaire and submit your GCash details.</li></ol><div className="notice">Opening the task alone is not enough—VetWeb must send a verified completion result before you can answer the questionnaire.</div><label className="check"><input type="checkbox" checked={agreed} onChange={event => setAgreed(event.target.checked)} /> <span>I am eligible to participate, understand that participation is voluntary, and agree to continue.</span></label><div className="actions"><button className="secondary" onClick={() => move("welcome")}>Back</button><button disabled={!agreed} onClick={() => move("task")}>Continue to VetWeb</button></div></section>}
     {step === "task" && <section className="card"><p className="eyebrow">STEP 2 · VETWEB TASK</p><h2>Complete the task in VetWeb</h2><p>Select the button below to open VetWeb in a new tab. Follow the task instructions there, then come back to this page.</p><button onClick={openTask}>{taskOpened ? "Open VetWeb again" : "Open VetWeb task"}</button>{taskLaunchError && <p className="fine">{taskLaunchError}</p>}<p className="fine">If the link does not open, allow pop-ups for this site and try again.</p><div className="actions"><button className="secondary" onClick={() => move("instructions")}>Back</button><button disabled={!taskOpened} onClick={() => move("checking")}>I have returned from VetWeb</button></div></section>}
     {step === "checking" && <section className="card"><p className="eyebrow">STEP 3 · VERIFICATION</p><h2>{verified ? "Task verified" : "Checking task completion"}</h2><p>VetWeb must verify the required task events before the questionnaire unlocks. Skipping the task, or simply opening the link, will not unlock it.</p><div className="notice"><b>{verified ? "Verified." : "Verification pending."}</b> {verified ? "You can now continue to the questionnaire." : "Return after you have successfully logged in to VetWeb, then check again."}</div>{verified ? <button onClick={() => move("survey")}>Continue to questionnaire</button> : <div className="actions"><button className="secondary" onClick={() => move("task")}>Return to task</button><button onClick={checkVerification}>Check again</button></div>}</section>}
-    {step === "survey" && <section className="card"><p className="eyebrow">STEP 4 · QUESTIONNAIRE</p><h2>Questionnaire coming next</h2><p>The research questions are being finalized. Once approved, this page will show the complete questionnaire after VetWeb verifies the task.</p><div className="notice"><b>Your task completion remains protected.</b><br />The questionnaire will be available only after verified completion.</div><p className="fine">No questionnaire answers are being collected in this preview.</p></section>}
+    {step === "survey" && <form className="questionnaire" onSubmit={submitSurvey}>
+      <section className="card survey-intro">
+        <p className="eyebrow">STEP 4 · QUESTIONNAIRE</p><h2>Tell us about your VetWeb experience</h2>
+        <p>This questionnaire evaluates VetWeb using selected ISO/IEC 25010:2011 software quality characteristics. Please answer based on the client-facing functions you used.</p>
+        <div className="notice"><b>Your answers are not yet saved.</b> The questionnaire is now fully built into the portal, but the database connection is the next step before real participant answers or GCash details can be collected.</div>
+        <div className="rating-key" aria-label="Rating scale">{ratingScale.map(({ value, label }) => <div key={value}><b>{value}</b><span>{label}</span></div>)}</div>
+      </section>
+      <section className="card respondent-card">
+        <p className="eyebrow">PART I · RESPONDENT INFORMATION</p><h3>Eligibility check</h3>
+        <div className="respondent-grid">
+          <fieldset><legend>Occupation / role</legend><div className="role-pill">Pet owner / client</div></fieldset>
+          <fieldset><legend>Are you 18 years old or above?</legend><div className="choice-row"><label><input type="radio" name="adult" value="yes" required /> Yes</label><label><input type="radio" name="adult" value="no" /> No</label></div></fieldset>
+          <fieldset><legend>Have you used VetWeb&apos;s client-facing functions?</legend><small>For example: booking, pet records, notifications, or the chatbot.</small><div className="choice-row"><label><input type="radio" name="usedVetWeb" value="yes" required /> Yes</label><label><input type="radio" name="usedVetWeb" value="no" /> No</label></div></fieldset>
+          <fieldset><legend>Have you used another veterinary clinic management, appointment, or electronic record system?</legend><div className="choice-row"><label><input type="radio" name="priorSystem" value="yes" required /> Yes</label><label><input type="radio" name="priorSystem" value="no" /> No</label></div><label className="specify">If yes, please specify <input name="priorSystemDetail" maxLength={120} placeholder="Optional" /></label></fieldset>
+        </div>
+      </section>
+      <section className="survey-questions">
+        <div className="survey-heading"><p className="eyebrow">PART II · SOFTWARE QUALITY EVALUATION</p><h3>Rate every statement</h3><p>Choose one number per statement. 5 is very acceptable; 1 is very not acceptable.</p></div>
+        {questionnaireSections.map(section => <section className="question-section" key={section.title}><h4>{section.title}</h4>{section.questions.map(question => <fieldset className="question-card" key={question.code}><div className="question-topline"><span className="question-code">{question.code}</span><span>{question.characteristic}</span></div><legend>{question.english}</legend><p className="translation">{question.filipino}</p><div className="rating-options">{ratingScale.map(({ value, label }) => <label key={value} title={label}><input type="radio" name={question.code} value={value} required /><b>{value}</b><span>{label}</span></label>)}</div></fieldset>)}</section>)}
+      </section>
+      <section className="card feedback-card"><label htmlFor="feedback"><span className="eyebrow">ADDITIONAL COMMENTS / FEEDBACK</span><textarea id="feedback" name="feedback" rows={5} maxLength={2000} placeholder="Optional: Tell us what worked well or what should be improved." /></label><p className="fine">Maximum 2,000 characters.</p>{surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}<div className="actions"><button type="button" className="secondary" onClick={() => move("checking")}>Back</button><button type="submit">Continue to incentive details</button></div></section>
+    </form>}
     {step === "reward" && <form className="card" onSubmit={submitReward}><p className="eyebrow">STEP 5 · INCENTIVE DETAILS</p><h2>Where should we send your incentive?</h2><p>After the survey phase ends, the research team will review verified submissions and send the approved <b>₱100 incentive</b>, or process the <b>₱1,000 raffle</b>, according to the final study rules.</p><label>GCash mobile number<input name="gcash" type="tel" inputMode="numeric" placeholder="0917 123 4567" pattern="(\\+63|0)9[0-9]{9}" title="Use a Philippine mobile number, e.g. 09171234567" required /></label><label className="check"><input required type="checkbox" /> <span>I confirm this is the GCash number the research team may use for the approved study incentive or raffle.</span></label><button type="submit">Submit and finish</button><p className="fine">GCash details must be stored separately from questionnaire answers once the production database is connected.</p></form>}
     {step === "done" && <section className="card success"><p className="eyebrow">SUBMISSION RECEIVED</p><h2>Thank you for participating.</h2><output>{reference}</output><p>Keep this reference code. The research team will process verified submissions at the end of the survey phase or according to the raffle rules.</p><p className="fine">Do not share your reference code or GCash number publicly.</p></section>}
   </main>;
