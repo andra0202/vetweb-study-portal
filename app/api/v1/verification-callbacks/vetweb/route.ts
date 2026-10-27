@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
 
   let event: { eventType?: string; studyState?: string };
   try { event = JSON.parse(rawBody); } catch { return NextResponse.json({ error: "invalid_payload" }, { status: 400 }); }
-  const session = event.eventType === "login.completed" ? verifyStudyState(event.studyState) : null;
+  // A valid signature alone is not enough. The study is unlocked only after
+  // VetWeb reports that the participant has successfully registered a pet.
+  const session = event.eventType === "pet.registered" ? verifyStudyState(event.studyState) : null;
   if (!session) return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
   // Development bridge only: replace this in-memory status with PostgreSQL before deployment.
   markVerified(session.id, session.expiresAt);
