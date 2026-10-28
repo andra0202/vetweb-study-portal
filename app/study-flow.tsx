@@ -71,6 +71,8 @@ export default function StudyFlow() {
   const [surveyStage, setSurveyStage] = useState<"eligibility" | "ratings" | "feedback">("eligibility");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [ratings, setRatings] = useState<Record<string, string>>({});
+  const [eligibility, setEligibility] = useState({ role: "Pet owner / client", adult: "", usedVetWeb: "", anotherSystem: "", anotherSystemDetail: "" });
+  const [savingSurvey, setSavingSurvey] = useState(false);
   const progress = steps.indexOf(step);
   const move = (next: Step) => setStep(next);
   const openTask = async () => {
@@ -97,6 +99,13 @@ export default function StudyFlow() {
       setSurveyMessage("This questionnaire is for pet owners or clients aged 18 or above who have used VetWeb's client-facing functions. Please return after using VetWeb if you are not yet eligible.");
       return;
     }
+    setEligibility({
+      role: "Pet owner / client",
+      adult: String(form.get("adult") || ""),
+      usedVetWeb: String(form.get("usedVetWeb") || ""),
+      anotherSystem: String(form.get("priorSystem") || ""),
+      anotherSystemDetail: String(form.get("priorSystemDetail") || "").trim(),
+    });
     setSurveyMessage("");
     setSurveyStage("ratings");
   };
@@ -110,11 +119,28 @@ export default function StudyFlow() {
     if (currentQuestion === questionnaireItems.length - 1) setSurveyStage("feedback");
     else setCurrentQuestion(index => index + 1);
   };
-  const submitSurvey = (event: FormEvent<HTMLFormElement>) => {
+  const submitSurvey = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    move("reward");
+    const state = sessionStorage.getItem("vetweb-study-state");
+    if (!state) { setSurveyMessage("Your study session has expired. Please start again from the VetWeb task."); return; }
+    setSavingSurvey(true);
+    setSurveyMessage("");
+    try {
+      const form = new FormData(event.currentTarget);
+      const response = await fetch("/api/v1/questionnaire-responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state, eligibility, ratings, feedback: String(form.get("feedback") || "").trim() }),
+      });
+      if (!response.ok) throw new Error("Unable to save questionnaire");
+      const { submissionId } = await response.json() as { submissionId: string };
+      setReference(`VWS-${submissionId.slice(-8).toUpperCase()}`);
+      move("reward");
+    } catch {
+      setSurveyMessage("Your answers could not be saved. Please check that Docker is running, then try again.");
+    } finally { setSavingSurvey(false); }
   };
-  const submitReward = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setReference(`VWS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`); move("done"); };
+  const submitReward = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); move("done"); };
 
   return <main className={`shell ${step === "welcome" ? "shell--welcome" : ""}`}>
     <header className="site-header">
@@ -131,7 +157,7 @@ export default function StudyFlow() {
         <section className="card survey-intro">
           <p className="eyebrow">STEP 4 · QUESTIONNAIRE</p><h2>Tell us about your VetWeb experience</h2>
           <p>We will guide you through a few quick checks, then one statement at a time. This is designed to be calm and easy to complete on a phone.</p>
-          <div className="notice"><b>Preview mode:</b> the questionnaire is complete, but answers are not saved until the study database is connected.</div>
+          <div className="notice"><b>Local test mode:</b> your questionnaire answers are saved to the private database on this laptop. GCash details are not saved yet.</div>
           <div className="rating-key" aria-label="Rating scale">{ratingScale.map(({ value, label }) => <div key={value}><b>{value}</b><span>{label}</span></div>)}</div>
         </section>
         <section className="card respondent-card">
@@ -153,9 +179,9 @@ export default function StudyFlow() {
         {surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}
         <div className="actions wizard-actions"><button type="button" className="secondary" onClick={() => currentQuestion === 0 ? setSurveyStage("eligibility") : setCurrentQuestion(index => index - 1)}>Back</button><button type="button" onClick={continueRating}>{currentQuestion === questionnaireItems.length - 1 ? "Continue to feedback" : "Next statement"}</button></div>
       </section>}
-      {surveyStage === "feedback" && <form className="card feedback-card" onSubmit={submitSurvey}><p className="eyebrow">FINAL STEP · OPTIONAL FEEDBACK</p><h2>Anything else you would like to share?</h2><p>Your ratings are complete. You may add a comment, or continue without one.</p><label htmlFor="feedback"><textarea id="feedback" name="feedback" rows={5} maxLength={2000} placeholder="Optional: Tell us what worked well or what should be improved." /></label><p className="fine">Maximum 2,000 characters.</p><div className="actions wizard-actions"><button type="button" className="secondary" onClick={() => { setSurveyStage("ratings"); setCurrentQuestion(questionnaireItems.length - 1); }}>Back</button><button type="submit">Continue to incentive details</button></div></form>}
+      {surveyStage === "feedback" && <form className="card feedback-card" onSubmit={submitSurvey}><p className="eyebrow">FINAL STEP · OPTIONAL FEEDBACK</p><h2>Anything else you would like to share?</h2><p>Your ratings are complete. You may add a comment, or continue without one.</p><label htmlFor="feedback"><textarea id="feedback" name="feedback" rows={5} maxLength={2000} placeholder="Optional: Tell us what worked well or what should be improved." /></label><p className="fine">Maximum 2,000 characters.</p>{surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}<div className="actions wizard-actions"><button type="button" className="secondary" disabled={savingSurvey} onClick={() => { setSurveyStage("ratings"); setCurrentQuestion(questionnaireItems.length - 1); }}>Back</button><button type="submit" disabled={savingSurvey}>{savingSurvey ? "Saving answers…" : "Save answers and continue"}</button></div></form>}
     </div>}
-    {step === "reward" && <form className="card" onSubmit={submitReward}><p className="eyebrow">STEP 5 · INCENTIVE DETAILS</p><h2>Where should we send your incentive?</h2><p>After the survey phase ends, the research team will review verified submissions and send the approved <b>₱100 incentive</b>, or process the <b>₱1,000 raffle</b>, according to the final study rules.</p><label>GCash mobile number<input name="gcash" type="tel" inputMode="numeric" placeholder="0917 123 4567" pattern="(\\+63|0)9[0-9]{9}" title="Use a Philippine mobile number, e.g. 09171234567" required /></label><label className="check"><input required type="checkbox" /> <span>I confirm this is the GCash number the research team may use for the approved study incentive or raffle.</span></label><button type="submit">Submit and finish</button><p className="fine">GCash details must be stored separately from questionnaire answers once the production database is connected.</p></form>}
+    {step === "reward" && <form className="card" onSubmit={submitReward}><p className="eyebrow">STEP 5 · INCENTIVE DETAILS</p><h2>Where should we send your incentive?</h2><p>After the survey phase ends, the research team will review verified submissions and send the approved <b>₱100 incentive</b>, or process the <b>₱1,000 raffle</b>, according to the final study rules.</p><label>GCash mobile number<input name="gcash" type="tel" inputMode="numeric" placeholder="0917 123 4567" pattern="(\\+63|0)9[0-9]{9}" title="Use a Philippine mobile number, e.g. 09171234567" required /></label><label className="check"><input required type="checkbox" /> <span>I confirm this is the GCash number the research team may use for the approved study incentive or raffle.</span></label><button type="submit">Submit and finish</button><p className="fine">For local testing, this number is not stored. GCash storage will be added separately with encryption before any real participants use the site.</p></form>}
     {step === "done" && <section className="card success"><p className="eyebrow">SUBMISSION RECEIVED</p><h2>Thank you for participating.</h2><output>{reference}</output><p>Keep this reference code. The research team will process verified submissions at the end of the survey phase or according to the raffle rules.</p><p className="fine">Do not share your reference code or GCash number publicly.</p></section>}
   </main>;
 }

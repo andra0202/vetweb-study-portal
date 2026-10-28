@@ -1,11 +1,11 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { markVerified, verifyStudyState } from "../../../../lib/study-verification";
+import { prisma } from "../../../../lib/prisma";
 
 /**
- * Boundary for the production VetWeb callback. It deliberately rejects all
- * callbacks until durable persistence/idempotency is wired to PostgreSQL.
- * This fail-closed behaviour prevents accidental survey unlocks.
+ * Fail-closed boundary for the VetWeb callback. A valid signed pet-registration
+ * event is recorded idempotently before it can unlock the questionnaire.
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.VETWEB_WEBHOOK_SECRET;
@@ -34,7 +34,54 @@ export async function POST(request: NextRequest) {
   // VetWeb reports that the participant has successfully registered a pet.
   const session = event.eventType === "pet.registered" ? verifyStudyState(event.studyState) : null;
   if (!session) return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
-  // Development bridge only: replace this in-memory status with PostgreSQL before deployment.
+  const idempotencyKey = createHash("sha256").update(rawBody).digest("hex");
+
+  try {
+    const storedSession = await prisma.studySession.findUnique({
+      where: { id: session.id },
+      select: { id: true, expiresAt: true },
+    });
+    if (!storedSession || storedSession.expiresAt.getTime() < Date.now()) {
+      return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.verificationEvent.upsert({
+        where: { idempotencyKey },
+        update: {},
+        create: {
+          sessionId: session.id,
+          eventType: "pet.registered",
+          occurredAt: new Date(),
+          evidenceDigest: createHash("sha256").update(rawBody).digest("hex"),
+          idempotencyKey,
+        },
+      });
+      await tx.verificationDecision.upsert({
+        where: { sessionId: session.id },
+        update: {
+          outcome: "VERIFIED",
+          reasons: ["VetWeb reported a successfully registered pet."],
+          criteria: { eventType: "pet.registered" },
+          source: "vetweb-webhook",
+        },
+        create: {
+          sessionId: session.id,
+          outcome: "VERIFIED",
+          reasons: ["VetWeb reported a successfully registered pet."],
+          criteria: { eventType: "pet.registered" },
+          source: "vetweb-webhook",
+        },
+      });
+      await tx.studySession.updateMany({
+        where: { id: session.id, state: "TASK_IN_PROGRESS" },
+        data: { state: "VERIFIED" },
+      });
+    });
+  } catch {
+    return NextResponse.json({ error: "verification_storage_unavailable" }, { status: 503 });
+  }
+
   markVerified(session.id, session.expiresAt);
   return NextResponse.json({ verified: true });
 }

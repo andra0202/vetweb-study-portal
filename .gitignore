@@ -2,7 +2,8 @@ node_modules
 .next
 .env
 .env.local
-prisma/migrations
 .integration-staging
 .integration-backups
+tmp
+*.tsbuildinfo
 *.zip
