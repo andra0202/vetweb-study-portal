@@ -73,6 +73,16 @@ body::before {
 .portal-identity b { font-size: 1.2rem; letter-spacing: -.03em; line-height: 1.05; }
 .portal-identity small { color: #87548c; font-weight: 600; }
 
+.research-shell { width: min(1100px, calc(100% - 36px)); margin: 54px auto; padding: 34px; border: 1px solid rgba(162, 45, 167, .24); border-radius: 26px; background: rgba(255,255,255,.92); box-shadow: 0 18px 45px rgba(97, 27, 104, .12); }
+.research-shell h1 { margin: 5px 0 8px; color: var(--vet-plum); font-size: clamp(1.7rem, 4vw, 2.5rem); }
+.research-note { max-width: 700px; color: #68416b; line-height: 1.6; }
+.research-table-wrap { overflow-x: auto; margin-top: 26px; border: 1px solid #f0caee; border-radius: 15px; background: white; }
+.research-table-wrap table { width: 100%; min-width: 800px; border-collapse: collapse; }
+.research-table-wrap th, .research-table-wrap td { padding: 14px 16px; border-bottom: 1px solid #f5e5f4; text-align: left; }
+.research-table-wrap th { color: #7d2180; background: #fff4ff; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
+.research-table-wrap td { color: #402b43; font-size: .92rem; }
+.research-table-wrap code { color: #7d2180; font-weight: 800; }
+
 .brand-mark {
   position: relative;
   width: 48px;

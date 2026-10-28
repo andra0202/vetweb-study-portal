@@ -74,6 +74,7 @@ export default function StudyFlow() {
   const [ratings, setRatings] = useState<Record<string, string>>({});
   const [eligibility, setEligibility] = useState({ role: "Pet owner / client", adult: "", usedVetWeb: "", anotherSystem: "", anotherSystemDetail: "" });
   const [savingSurvey, setSavingSurvey] = useState(false);
+  const [savingRaffle, setSavingRaffle] = useState(false);
   const progress = steps.indexOf(step);
   const move = (next: Step) => setStep(next);
   const openTask = async () => {
@@ -135,14 +136,34 @@ export default function StudyFlow() {
         body: JSON.stringify({ state, eligibility, ratings, feedback: String(form.get("feedback") || "").trim() }),
       });
       if (!response.ok) throw new Error("Unable to save questionnaire");
-      const { submissionId } = await response.json() as { submissionId: string };
-      setReference(`VWS-${submissionId.slice(-8).toUpperCase()}`);
       move("reward");
     } catch {
       setSurveyMessage("Your answers could not be saved. Please check that Docker is running, then try again.");
     } finally { setSavingSurvey(false); }
   };
-  const submitReward = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); move("done"); };
+  const submitReward = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const state = sessionStorage.getItem("vetweb-study-state");
+    if (!state) { setSurveyMessage("Your study session has expired. Please start again from the VetWeb task."); return; }
+    setSavingRaffle(true);
+    setSurveyMessage("");
+    try {
+      const form = new FormData(event.currentTarget);
+      const response = await fetch("/api/v1/payment-claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state, gcashNumber: String(form.get("gcash") || "") }),
+      });
+      const result = await response.json() as { referenceCode?: string; error?: string };
+      if (!response.ok || !result.referenceCode) {
+        setSurveyMessage(result.error === "duplicate_raffle_entry" ? "This GCash number already has a raffle entry." : "Your raffle details could not be saved. Please try again.");
+        return;
+      }
+      setReference(result.referenceCode);
+      move("done");
+    } catch { setSurveyMessage("Your raffle details could not be saved. Please try again."); }
+    finally { setSavingRaffle(false); }
+  };
 
   return <main className={`shell ${step === "welcome" ? "shell--welcome" : ""}`}>
     <header className="site-header">
@@ -183,7 +204,7 @@ export default function StudyFlow() {
       </section>}
       {surveyStage === "feedback" && <form className="card feedback-card" onSubmit={submitSurvey}><p className="eyebrow">FINAL STEP · OPTIONAL FEEDBACK</p><h2>Anything else you would like to share?</h2><p>Your ratings are complete. You may add a comment, or continue without one.</p><label htmlFor="feedback"><textarea id="feedback" name="feedback" rows={5} maxLength={2000} placeholder="Optional: Tell us what worked well or what should be improved." /></label><p className="fine">Maximum 2,000 characters.</p>{surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}<div className="actions wizard-actions"><button type="button" className="secondary" disabled={savingSurvey} onClick={() => { setSurveyStage("ratings"); setCurrentQuestion(questionnaireItems.length - 1); }}>Back</button><button type="submit" disabled={savingSurvey}>{savingSurvey ? "Saving answers…" : "Save answers and continue"}</button></div></form>}
     </div>}
-    {step === "reward" && <form className="card" onSubmit={submitReward}><p className="eyebrow">STEP 5 · RAFFLE DETAILS</p><h2>Where should we send the raffle prize?</h2><p>After the survey phase ends, the research team will review verified submissions and process the <b>₱500 GCash raffle prize</b> according to the final study rules. A prize is not guaranteed; this number will be used only if you are selected.</p><label>GCash mobile number<input name="gcash" type="tel" inputMode="numeric" placeholder="0917 123 4567" pattern="(\\+63|0)9[0-9]{9}" title="Use a Philippine mobile number, e.g. 09171234567" required /></label><label className="check"><input required type="checkbox" /> <span>I confirm this is the GCash number the research team may use to send the ₱500 raffle prize if I am selected.</span></label><button type="submit">Submit and finish</button><p className="fine">For local testing, this number is not stored. GCash storage will be added separately with encryption before any real participants use the site.</p></form>}
+    {step === "reward" && <form className="card" onSubmit={submitReward}><p className="eyebrow">STEP 5 · RAFFLE DETAILS</p><h2>Where should we send the raffle prize?</h2><p>After the survey phase ends, the research team will review verified submissions and process the <b>₱500 GCash raffle prize</b> according to the final study rules. A prize is not guaranteed; this number will be used only if you are selected.</p><label>GCash mobile number<input name="gcash" type="tel" inputMode="numeric" placeholder="0917 123 4567" pattern="(\\+63|0)9[0-9]{9}" title="Use a Philippine mobile number, e.g. 09171234567" required /></label><label className="check"><input required type="checkbox" /> <span>I confirm this is the GCash number the research team may use to send the ₱500 raffle prize if I am selected.</span></label>{surveyMessage && <p className="eligibility-message" role="alert">{surveyMessage}</p>}<button disabled={savingRaffle} type="submit">{savingRaffle ? "Saving raffle details…" : "Submit and finish"}</button><p className="fine">Your GCash number is encrypted and stored separately from your answers. It is accessible only through the protected researcher dashboard.</p></form>}
     {step === "done" && <section className="card success"><p className="eyebrow">SUBMISSION RECEIVED</p><h2>Thank you for participating.</h2><output>{reference}</output><p>Keep this reference code. The research team will process verified submissions at the end of the survey phase or according to the raffle rules.</p><p className="fine">Do not share your reference code or GCash number publicly.</p></section>}
   </main>;
 }
