@@ -74,6 +74,7 @@ body::before {
 .portal-identity small { color: #87548c; font-weight: 600; }
 
 .research-shell { width: min(1100px, calc(100% - 36px)); margin: 54px auto; padding: 34px; border: 1px solid rgba(162, 45, 167, .24); border-radius: 26px; background: rgba(255,255,255,.92); box-shadow: 0 18px 45px rgba(97, 27, 104, .12); }
+.research-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .research-shell h1 { margin: 5px 0 8px; color: var(--vet-plum); font-size: clamp(1.7rem, 4vw, 2.5rem); }
 .research-note { max-width: 700px; color: #68416b; line-height: 1.6; }
 .research-table-wrap { overflow-x: auto; margin-top: 26px; border: 1px solid #f0caee; border-radius: 15px; background: white; }
@@ -82,6 +83,18 @@ body::before {
 .research-table-wrap th { color: #7d2180; background: #fff4ff; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
 .research-table-wrap td { color: #402b43; font-size: .92rem; }
 .research-table-wrap code { color: #7d2180; font-weight: 800; }
+.research-login-shell { display: grid; min-height: 100vh; place-items: center; padding: 24px; }
+.research-login-card { width: min(100%, 440px); padding: 38px; border: 1px solid rgba(162, 45, 167, .24); border-radius: 28px; background: rgba(255,255,255,.94); box-shadow: 0 22px 55px rgba(97, 27, 104, .16); text-align: center; }
+.research-login-card > img { width: 190px; height: auto; margin: 0 auto 20px; }
+.research-login-card h1 { margin: 4px 0 11px; color: var(--vet-plum); font-size: 2rem; }
+.research-login-card > p:not(.eyebrow):not(.eligibility-message) { color: #68416b; line-height: 1.55; }
+.research-login-card form { display: grid; gap: 16px; margin-top: 23px; text-align: left; }
+.research-login-card form label { display: grid; gap: 7px; color: #56225d; font-size: .9rem; font-weight: 800; }
+.research-login-card input { width: 100%; padding: 13px 14px; border: 1px solid #eab9e7; border-radius: 12px; font: inherit; }
+.research-login-card form button { width: 100%; }
+.research-login-card > a, .researcher-access { display: inline-block; margin-top: 19px; color: #8a2e90; font-size: .86rem; font-weight: 800; text-decoration: none; }
+.researcher-access { margin-top: 14px; }
+@media (max-width: 620px) { .research-shell { width: min(100% - 24px, 1100px); margin: 24px auto; padding: 22px; } .research-heading { display: grid; } }
 
 .brand-mark {
   position: relative;
