@@ -139,6 +139,9 @@ model PaymentClaim {
   id              String       @id @default(cuid())
   sessionId       String       @unique
   session         StudySession @relation(fields: [sessionId], references: [id])
+  // New entries always include this verified VetWeb account hash. Optional only
+  // so a future migration remains safe if historical test claims already exist.
+  participantHash String?      @unique
   encryptedNumber String
   duplicateHash   String       @unique
   state           PaymentState @default(PENDING_REVIEW)

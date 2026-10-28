@@ -51,6 +51,13 @@ export async function POST(request: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
+      if (event.participantHash) {
+        await tx.vetWebParticipantLink.upsert({
+          where: { sessionId: session.id },
+          update: { participantHash: event.participantHash, source: "vetweb-webhook" },
+          create: { sessionId: session.id, participantHash: event.participantHash, source: "vetweb-webhook" },
+        });
+      }
       await tx.verificationEvent.upsert({
         where: { idempotencyKey },
         update: {},

@@ -19,17 +19,25 @@ export async function POST(request: NextRequest) {
 
   const session = await prisma.studySession.findUnique({
     where: { id: studyState.id },
-    include: { response: true, payment: true },
+    include: { response: true, payment: true, participantLink: true },
   });
   if (!session || !session.response || session.expiresAt.getTime() < Date.now()) {
     return NextResponse.json({ error: "invalid_session" }, { status: 401 });
   }
   if (session.payment) return NextResponse.json({ referenceCode: session.payment.referenceCode, alreadySubmitted: true });
+  if (!session.participantLink) return NextResponse.json({ error: "participant_not_linked" }, { status: 403 });
+
+  const existingParticipantClaim = await prisma.paymentClaim.findUnique({
+    where: { participantHash: session.participantLink.participantHash },
+    select: { referenceCode: true },
+  });
+  if (existingParticipantClaim) return NextResponse.json({ referenceCode: existingParticipantClaim.referenceCode, alreadySubmitted: true });
 
   try {
     const claim = await prisma.paymentClaim.create({
       data: {
         sessionId: session.id,
+        participantHash: session.participantLink.participantHash,
         encryptedNumber: encryptGcashNumber(normalizedNumber),
         duplicateHash: gcashDuplicateHash(normalizedNumber),
         referenceCode: createReferenceCode(),

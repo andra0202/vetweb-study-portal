@@ -156,7 +156,7 @@ export default function StudyFlow() {
       });
       const result = await response.json() as { referenceCode?: string; error?: string };
       if (!response.ok || !result.referenceCode) {
-        setSurveyMessage(result.error === "duplicate_raffle_entry" ? "This GCash number already has a raffle entry." : "Your raffle details could not be saved. Please try again.");
+        setSurveyMessage(result.error === "duplicate_raffle_entry" ? "This GCash number or VetWeb account already has a raffle entry." : result.error === "participant_not_linked" ? "Your VetWeb account could not be linked to this study session. Please start again from the VetWeb task." : "Your raffle details could not be saved. Please try again.");
         return;
       }
       setReference(result.referenceCode);
