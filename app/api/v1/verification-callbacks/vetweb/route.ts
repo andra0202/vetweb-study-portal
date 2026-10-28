@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     ? await prisma.vetWebParticipantLink.findFirst({ where: { participantHash: event.participantHash }, include: { session: true }, orderBy: { linkedAt: "desc" } })
     : null;
   const session = signedSession ? { id: signedSession.id, expiresAt: signedSession.expiresAt } : linkedSession?.session;
-  if (!session || session.expiresAt.getTime() < Date.now()) return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
+  const expiry = session ? (session.expiresAt instanceof Date ? session.expiresAt.getTime() : session.expiresAt) : 0;
+  if (!session || expiry < Date.now()) return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
   const idempotencyKey = createHash("sha256").update(rawBody).digest("hex");
 
   try {
