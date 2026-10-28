@@ -28,12 +28,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let event: { eventType?: string; studyState?: string };
+  let event: { eventType?: string; studyState?: string; participantHash?: string };
   try { event = JSON.parse(rawBody); } catch { return NextResponse.json({ error: "invalid_payload" }, { status: 400 }); }
   // A valid signature alone is not enough. The study is unlocked only after
   // VetWeb reports that the participant has successfully registered a pet.
-  const session = event.eventType === "pet.registered" ? verifyStudyState(event.studyState) : null;
-  if (!session) return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
+  const signedSession = event.eventType === "pet.registered" ? verifyStudyState(event.studyState) : null;
+  const linkedSession = !signedSession && event.eventType === "pet.registered" && event.participantHash
+    ? await prisma.vetWebParticipantLink.findFirst({ where: { participantHash: event.participantHash }, include: { session: true }, orderBy: { linkedAt: "desc" } })
+    : null;
+  const session = signedSession ? { id: signedSession.id, expiresAt: signedSession.expiresAt } : linkedSession?.session;
+  if (!session || session.expiresAt.getTime() < Date.now()) return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
   const idempotencyKey = createHash("sha256").update(rawBody).digest("hex");
 
   try {
@@ -82,6 +86,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "verification_storage_unavailable" }, { status: 503 });
   }
 
-  markVerified(session.id, session.expiresAt);
+  markVerified(session.id, session.expiresAt instanceof Date ? session.expiresAt.getTime() : session.expiresAt);
   return NextResponse.json({ verified: true });
 }
