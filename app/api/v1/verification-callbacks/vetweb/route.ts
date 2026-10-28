@@ -50,6 +50,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "invalid_completion" }, { status: 400 });
     }
 
+    if (event.participantHash) {
+      const existingLink = await prisma.vetWebParticipantLink.findFirst({
+        where: { participantHash: event.participantHash },
+        select: { sessionId: true },
+      });
+      if (existingLink && existingLink.sessionId !== session.id) {
+        return NextResponse.json({ error: "study_already_linked" }, { status: 409 });
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       if (event.participantHash) {
         await tx.vetWebParticipantLink.upsert({

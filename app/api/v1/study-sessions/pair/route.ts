@@ -22,6 +22,13 @@ export async function POST(request: NextRequest) {
   if (!body.pairingCode || !body.participantHash) return NextResponse.json({ error: "invalid_pairing" }, { status: 400 });
   const session = await prisma.studySession.findUnique({ where: { pairingCodeHash: createHash("sha256").update(body.pairingCode.trim().toUpperCase()).digest("hex") } });
   if (!session || !session.pairingExpiresAt || session.pairingExpiresAt.getTime() < Date.now()) return NextResponse.json({ error: "invalid_pairing" }, { status: 400 });
+  const existingLink = await prisma.vetWebParticipantLink.findFirst({
+    where: { participantHash: body.participantHash },
+    select: { sessionId: true },
+  });
+  if (existingLink && existingLink.sessionId !== session.id) {
+    return NextResponse.json({ error: "study_already_linked" }, { status: 409 });
+  }
   await prisma.vetWebParticipantLink.upsert({ where: { sessionId: session.id }, update: { participantHash: body.participantHash, source: "vetweb-pwa" }, create: { sessionId: session.id, participantHash: body.participantHash, source: "vetweb-pwa" } });
   return NextResponse.json({ paired: true });
 }

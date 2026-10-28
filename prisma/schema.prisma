@@ -83,11 +83,11 @@ model VetWebParticipantLink {
   id              String       @id @default(cuid())
   sessionId       String       @unique
   session         StudySession @relation(fields: [sessionId], references: [id])
-  participantHash String
+  // One VetWeb account may participate in this study only once.
+  participantHash String       @unique
   source          String
   linkedAt        DateTime     @default(now())
 
-  @@index([participantHash])
 }
 
 model VerificationToken {
