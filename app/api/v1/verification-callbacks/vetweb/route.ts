@@ -4,8 +4,8 @@ import { markVerified, verifyStudyState } from "../../../../lib/study-verificati
 import { prisma } from "../../../../lib/prisma";
 
 /**
- * Fail-closed boundary for the VetWeb callback. A valid signed pet-registration
- * event is recorded idempotently before it can unlock the questionnaire.
+ * Fail-closed boundary for the VetWeb callback. Both a signed pet-registration
+ * and a subsequent appointment-booking event are required to unlock the study.
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.VETWEB_WEBHOOK_SECRET;
@@ -31,9 +31,10 @@ export async function POST(request: NextRequest) {
   let event: { eventType?: string; studyState?: string; participantHash?: string };
   try { event = JSON.parse(rawBody); } catch { return NextResponse.json({ error: "invalid_payload" }, { status: 400 }); }
   // A valid signature alone is not enough. The study is unlocked only after
-  // VetWeb reports that the participant has successfully registered a pet.
-  const signedSession = event.eventType === "pet.registered" ? verifyStudyState(event.studyState) : null;
-  const linkedSession = !signedSession && event.eventType === "pet.registered" && event.participantHash
+  // VetWeb reports a linked pet registration followed by an appointment booking.
+  const supportedEvent = event.eventType === "pet.registered" || event.eventType === "appointment.booked";
+  const signedSession = supportedEvent ? verifyStudyState(event.studyState) : null;
+  const linkedSession = !signedSession && supportedEvent && event.participantHash
     ? await prisma.vetWebParticipantLink.findFirst({ where: { participantHash: event.participantHash }, include: { session: true }, orderBy: { linkedAt: "desc" } })
     : null;
   const session = signedSession ? { id: signedSession.id, expiresAt: signedSession.expiresAt } : linkedSession?.session;
@@ -65,31 +66,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "study_link_required" }, { status: 403 });
     }
 
+    if (event.eventType === "appointment.booked") {
+      const petRegistration = await prisma.verificationEvent.findFirst({
+        where: { sessionId: session.id, eventType: "pet.registered" },
+        select: { id: true },
+      });
+      if (!petRegistration) return NextResponse.json({ error: "pet_registration_required" }, { status: 409 });
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.verificationEvent.upsert({
         where: { idempotencyKey },
         update: {},
         create: {
           sessionId: session.id,
-          eventType: "pet.registered",
+          eventType: event.eventType!,
           occurredAt: new Date(),
           evidenceDigest: createHash("sha256").update(rawBody).digest("hex"),
           idempotencyKey,
         },
       });
+      if (event.eventType !== "appointment.booked") return;
       await tx.verificationDecision.upsert({
         where: { sessionId: session.id },
         update: {
           outcome: "VERIFIED",
-          reasons: ["VetWeb reported a successfully registered pet."],
-          criteria: { eventType: "pet.registered" },
+          reasons: ["VetWeb reported a linked pet registration followed by an appointment booking."],
+          criteria: { requiredEvents: ["pet.registered", "appointment.booked"] },
           source: "vetweb-webhook",
         },
         create: {
           sessionId: session.id,
           outcome: "VERIFIED",
-          reasons: ["VetWeb reported a successfully registered pet."],
-          criteria: { eventType: "pet.registered" },
+          reasons: ["VetWeb reported a linked pet registration followed by an appointment booking."],
+          criteria: { requiredEvents: ["pet.registered", "appointment.booked"] },
           source: "vetweb-webhook",
         },
       });
@@ -102,6 +112,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "verification_storage_unavailable" }, { status: 503 });
   }
 
-  markVerified(session.id, session.expiresAt instanceof Date ? session.expiresAt.getTime() : session.expiresAt);
-  return NextResponse.json({ verified: true });
+  const completed = event.eventType === "appointment.booked";
+  if (completed) markVerified(session.id, session.expiresAt instanceof Date ? session.expiresAt.getTime() : session.expiresAt);
+  return NextResponse.json({ verified: completed, petRegistered: event.eventType === "pet.registered" });
 }

@@ -7,5 +7,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ state: str
   if (!parsed) return NextResponse.json({ error: "invalid_session" }, { status: 401 });
   const session = await prisma.studySession.findUnique({ where: { id: parsed.id }, select: { state: true, expiresAt: true } });
   if (!session || session.expiresAt.getTime() < Date.now()) return NextResponse.json({ error: "invalid_session" }, { status: 401 });
-  return NextResponse.json({ verified: isVerified(parsed.id) || session.state === "VERIFIED" });
+  const petRegistration = await prisma.verificationEvent.findFirst({ where: { sessionId: parsed.id, eventType: "pet.registered" }, select: { id: true } });
+  return NextResponse.json({ verified: isVerified(parsed.id) || session.state === "VERIFIED", petRegistered: Boolean(petRegistration) });
 }

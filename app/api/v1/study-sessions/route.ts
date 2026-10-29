@@ -21,7 +21,7 @@ export async function POST() {
         id: sessionId,
         studyId: "vetweb-quality-study",
         state: "TASK_IN_PROGRESS",
-        taskVersion: "pet-registration-v1",
+        taskVersion: "pet-registration-and-appointment-v1",
         pairingCodeHash: createHash("sha256").update(pairingCode).digest("hex"),
         pairingExpiresAt: new Date(expiresAt),
         expiresAt: new Date(expiresAt),
