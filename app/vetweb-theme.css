@@ -78,11 +78,18 @@ body::before {
 .research-shell h1 { margin: 5px 0 8px; color: var(--vet-plum); font-size: clamp(1.7rem, 4vw, 2.5rem); }
 .research-note { max-width: 700px; color: #68416b; line-height: 1.6; }
 .research-table-wrap { overflow-x: auto; margin-top: 26px; border: 1px solid #f0caee; border-radius: 15px; background: white; }
-.research-table-wrap table { width: 100%; min-width: 800px; border-collapse: collapse; }
+.research-table-wrap table { width: 100%; min-width: 980px; border-collapse: collapse; }
 .research-table-wrap th, .research-table-wrap td { padding: 14px 16px; border-bottom: 1px solid #f5e5f4; text-align: left; }
 .research-table-wrap th { color: #7d2180; background: #fff4ff; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
 .research-table-wrap td { color: #402b43; font-size: .92rem; }
 .research-table-wrap code { color: #7d2180; font-weight: 800; }
+.research-answers summary { cursor: pointer; color: #8a188d; font-weight: 800; white-space: nowrap; }
+.research-answers[open] summary { margin-bottom: 10px; }
+.research-answers ol { display: grid; gap: 8px; margin: 0; padding-left: 22px; min-width: 340px; }
+.research-answers li { display: grid; gap: 3px; }
+.research-answers li b { color: #8a188d; font-size: .78rem; }
+.research-answers li span { color: #5d3a60; line-height: 1.35; }
+.research-answers li strong { color: #2e1532; font-size: .82rem; }
 .research-login-shell { display: grid; min-height: 100vh; place-items: center; padding: 24px; }
 .research-login-card { width: min(100%, 440px); padding: 38px; border: 1px solid rgba(162, 45, 167, .24); border-radius: 28px; background: rgba(255,255,255,.94); box-shadow: 0 22px 55px rgba(97, 27, 104, .16); text-align: center; }
 .research-login-card > img { width: 190px; height: auto; margin: 0 auto 20px; }
