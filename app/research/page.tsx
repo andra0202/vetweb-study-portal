@@ -13,7 +13,7 @@ function feedbackFromAnswers(answers: unknown) {
 }
 
 const questionLabels: Record<string, string> = {
-  A4: "VetWeb helps users accomplish veterinary clinic tasks and objectives.",
+  A4: "VetWeb supports pet-profile registration, appointment booking, appointment notifications and status updates, and the inquiry chatbot.",
   B1: "VetWeb responds appropriately to user commands.",
   B3: "VetWeb provides relevant notifications for clinic events.",
   B4: "VetWeb operates without noticeable lag during normal use.",

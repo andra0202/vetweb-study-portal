@@ -4,8 +4,9 @@ import { markVerified, verifyStudyState } from "../../../../lib/study-verificati
 import { prisma } from "../../../../lib/prisma";
 
 /**
- * Fail-closed boundary for the VetWeb callback. Both a signed pet-registration
- * and a subsequent appointment-booking event are required to unlock the study.
+ * Fail-closed boundary for the VetWeb callback. A linked participant must
+ * register a pet, book an appointment, open its notification, and use the
+ * inquiry chatbot before the study unlocks.
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.VETWEB_WEBHOOK_SECRET;
@@ -30,9 +31,10 @@ export async function POST(request: NextRequest) {
 
   let event: { eventType?: string; studyState?: string; participantHash?: string };
   try { event = JSON.parse(rawBody); } catch { return NextResponse.json({ error: "invalid_payload" }, { status: 400 }); }
-  // A valid signature alone is not enough. The study is unlocked only after
-  // VetWeb reports a linked pet registration followed by an appointment booking.
-  const supportedEvent = event.eventType === "pet.registered" || event.eventType === "appointment.booked";
+  const requiredEvents = ["pet.registered", "appointment.booked", "appointment.notification_opened", "chatbot.used"] as const;
+  // A valid signature alone is not enough. Events must come from the linked
+  // VetWeb account and follow the participant's guided task sequence.
+  const supportedEvent = requiredEvents.includes(event.eventType as typeof requiredEvents[number]);
   const signedSession = supportedEvent ? verifyStudyState(event.studyState) : null;
   const linkedSession = !signedSession && supportedEvent && event.participantHash
     ? await prisma.vetWebParticipantLink.findFirst({ where: { participantHash: event.participantHash }, include: { session: true }, orderBy: { linkedAt: "desc" } })
@@ -66,14 +68,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "study_link_required" }, { status: 403 });
     }
 
-    if (event.eventType === "appointment.booked") {
-      const petRegistration = await prisma.verificationEvent.findFirst({
-        where: { sessionId: session.id, eventType: "pet.registered" },
-        select: { id: true },
-      });
-      if (!petRegistration) return NextResponse.json({ error: "pet_registration_required" }, { status: 409 });
+    const hasEvent = async (eventType: string) => Boolean(await prisma.verificationEvent.findFirst({
+      where: { sessionId: session.id, eventType },
+      select: { id: true },
+    }));
+    if (event.eventType === "appointment.booked" && !await hasEvent("pet.registered")) {
+      return NextResponse.json({ error: "pet_registration_required" }, { status: 409 });
+    }
+    if (event.eventType === "appointment.notification_opened" && !await hasEvent("appointment.booked")) {
+      return NextResponse.json({ error: "appointment_required" }, { status: 409 });
+    }
+    if (event.eventType === "chatbot.used" && !await hasEvent("appointment.notification_opened")) {
+      return NextResponse.json({ error: "notification_required" }, { status: 409 });
     }
 
+    let completed = false;
     await prisma.$transaction(async (tx) => {
       await tx.verificationEvent.upsert({
         where: { idempotencyKey },
@@ -86,20 +95,25 @@ export async function POST(request: NextRequest) {
           idempotencyKey,
         },
       });
-      if (event.eventType !== "appointment.booked") return;
+      const completedEvents = await tx.verificationEvent.findMany({
+        where: { sessionId: session.id, eventType: { in: [...requiredEvents] } },
+        select: { eventType: true },
+      });
+      completed = requiredEvents.every(eventType => completedEvents.some(item => item.eventType === eventType));
+      if (!completed) return;
       await tx.verificationDecision.upsert({
         where: { sessionId: session.id },
         update: {
           outcome: "VERIFIED",
-          reasons: ["VetWeb reported a linked pet registration followed by an appointment booking."],
-          criteria: { requiredEvents: ["pet.registered", "appointment.booked"] },
+          reasons: ["VetWeb confirmed the linked pet profile, appointment booking, appointment notification, and inquiry chatbot tasks."],
+          criteria: { requiredEvents },
           source: "vetweb-webhook",
         },
         create: {
           sessionId: session.id,
           outcome: "VERIFIED",
-          reasons: ["VetWeb reported a linked pet registration followed by an appointment booking."],
-          criteria: { requiredEvents: ["pet.registered", "appointment.booked"] },
+          reasons: ["VetWeb confirmed the linked pet profile, appointment booking, appointment notification, and inquiry chatbot tasks."],
+          criteria: { requiredEvents },
           source: "vetweb-webhook",
         },
       });
@@ -108,11 +122,11 @@ export async function POST(request: NextRequest) {
         data: { state: "VERIFIED" },
       });
     });
+    if (completed) markVerified(session.id, session.expiresAt instanceof Date ? session.expiresAt.getTime() : session.expiresAt);
+    return NextResponse.json({ verified: completed });
   } catch {
     return NextResponse.json({ error: "verification_storage_unavailable" }, { status: 503 });
   }
 
-  const completed = event.eventType === "appointment.booked";
-  if (completed) markVerified(session.id, session.expiresAt instanceof Date ? session.expiresAt.getTime() : session.expiresAt);
-  return NextResponse.json({ verified: completed, petRegistered: event.eventType === "pet.registered" });
+  return NextResponse.json({ verified: false });
 }
