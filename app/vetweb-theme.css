@@ -9,6 +9,7 @@
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   background:
     radial-gradient(circle at 4% 13%, rgba(197, 105, 199, .16) 0 52px, transparent 53px),
@@ -18,6 +19,13 @@ body {
     linear-gradient(135deg, #fffaff 0%, #f9f1fa 48%, #f2e9f8 100%);
   color: var(--vet-ink);
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iPhone/iPad Home Screen apps need room for the notch and home indicator. */
+@supports (padding: max(0px)) {
+  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 }
 
 body::before {
@@ -295,6 +303,8 @@ button {
   background: linear-gradient(105deg, var(--vet-purple), #c854bb 55%, #a22da7);
   box-shadow: 0 8px 17px rgba(162, 45, 167, .23);
   transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 button::before {
@@ -321,6 +331,7 @@ input, select, textarea {
   border-color: rgba(162, 45, 167, .24);
   border-radius: 13px;
   transition: border-color .2s ease, box-shadow .2s ease;
+  font-size: 16px;
 }
 input:focus, select:focus, textarea:focus { border-color: #b747b5; box-shadow: 0 0 0 4px rgba(197,105,199,.12); outline: none; }
 .check input { accent-color: var(--vet-purple); }
