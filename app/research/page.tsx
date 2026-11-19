@@ -37,6 +37,20 @@ const ratingLabels: Record<string, string> = {
   "1": "Very not acceptable",
 };
 
+function formatPhilippineTime(date: Date) {
+  return new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
+  }).format(date);
+}
+
 function ratingsFromAnswers(answers: unknown) {
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) return [];
   const ratings = (answers as Record<string, unknown>).ratings;
@@ -66,7 +80,7 @@ export default async function ResearchDashboard() {
         let gcash = "Unavailable";
         try { gcash = decryptGcashNumber(claim.encryptedNumber); } catch { /* Keep encrypted data unreadable when the key is absent or incorrect. */ }
         const ratings = ratingsFromAnswers(claim.session.response?.answers);
-        return <tr key={claim.id}><td><code>{claim.referenceCode}</code></td><td>{gcash}</td><td>{claim.state.replaceAll("_", " ")}</td><td>{ratings.length ? <details className="research-answers"><summary>View answers ({ratings.length})</summary><ol>{ratings.map(rating => <li key={rating.code}><b>{rating.code}</b><span>{rating.question}</span><strong>{rating.value} · {ratingLabels[rating.value] ?? "Not recorded"}</strong></li>)}</ol></details> : "No ratings recorded"}</td><td>{feedbackFromAnswers(claim.session.response?.answers)}</td><td>{claim.session.response?.submittedAt.toLocaleString() ?? "—"}</td><td>{claim.createdAt.toLocaleString()}</td></tr>;
+        return <tr key={claim.id}><td><code>{claim.referenceCode}</code></td><td>{gcash}</td><td>{claim.state.replaceAll("_", " ")}</td><td>{ratings.length ? <details className="research-answers"><summary>View answers ({ratings.length})</summary><ol>{ratings.map(rating => <li key={rating.code}><b>{rating.code}</b><span>{rating.question}</span><strong>{rating.value} · {ratingLabels[rating.value] ?? "Not recorded"}</strong></li>)}</ol></details> : "No ratings recorded"}</td><td>{feedbackFromAnswers(claim.session.response?.answers)}</td><td>{claim.session.response?.submittedAt ? formatPhilippineTime(claim.session.response.submittedAt) : "—"}</td><td>{formatPhilippineTime(claim.createdAt)}</td></tr>;
       }) : <tr><td colSpan={7}>No raffle entries have been submitted yet.</td></tr>}</tbody>
     </table></div>
   </main>;
