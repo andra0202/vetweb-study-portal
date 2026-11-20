@@ -41,6 +41,9 @@ jobs:
           # every HTML, CSS, JavaScript, and image file from one build together.
           path: .next/standalone
           include-hidden-files: true
+          # This artifact is only needed while Azure is deploying it. Keeping
+          # hundreds of old build packages exhausts GitHub's free storage.
+          retention-days: 1
 
   deploy:
     runs-on: ubuntu-latest

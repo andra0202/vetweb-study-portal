@@ -1,7 +1,9 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 const verified = new Map<string, number>();
-const ttlMs = 30 * 60_000;
+// Participants complete several real VetWeb tasks. Keep one signed study
+// session usable long enough to recover from a refresh or app switch.
+const ttlMs = 2 * 60 * 60_000;
 const secret = () => process.env.STUDY_SESSION_SIGNING_SECRET || "";
 const sign = (value: string) => createHmac("sha256", secret()).update(value).digest("hex");
 

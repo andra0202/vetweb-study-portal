@@ -1,10 +1,34 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type Step = "welcome" | "instructions" | "task" | "appointment" | "notification" | "chatbot" | "checking" | "survey" | "reward" | "done";
 const steps: Step[] = ["welcome", "instructions", "task", "appointment", "notification", "chatbot", "checking", "survey", "reward", "done"];
 const vetWebTaskUrl = process.env.NEXT_PUBLIC_VETWEB_TASK_URL || "https://vetweb.example.com";
+const savedSessionKey = "vetweb-study-active-session";
+
+type SavedStudySession = {
+  state: string;
+  pairingCode: string;
+  launchUrl: string;
+  expiresAt: number;
+  step: Step;
+};
+
+function readSavedSession(): SavedStudySession | null {
+  try {
+    const value = window.localStorage.getItem(savedSessionKey);
+    if (!value) return null;
+    const saved = JSON.parse(value) as SavedStudySession;
+    if (!saved.state || !saved.pairingCode || !saved.launchUrl || !Number.isFinite(saved.expiresAt) || saved.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(savedSessionKey);
+      return null;
+    }
+    return saved;
+  } catch {
+    return null;
+  }
+}
 
 const ratingScale = [
   { value: "5", label: "Very acceptable" },
@@ -81,17 +105,52 @@ export default function StudyFlow() {
   const [savingSurvey, setSavingSurvey] = useState(false);
   const [savingRaffle, setSavingRaffle] = useState(false);
   const progress = steps.indexOf(step);
-  const move = (next: Step) => setStep(next);
+  const move = (next: Step) => {
+    setStep(next);
+    const saved = readSavedSession();
+    if (!saved) return;
+    if (next === "done") window.localStorage.removeItem(savedSessionKey);
+    else window.localStorage.setItem(savedSessionKey, JSON.stringify({ ...saved, step: next }));
+  };
+
+  useEffect(() => {
+    const saved = readSavedSession();
+    if (!saved) return;
+    sessionStorage.setItem("vetweb-study-state", saved.state);
+    setPairingCode(saved.pairingCode);
+    setTaskLaunchUrl(saved.launchUrl);
+    setTaskOpened(true);
+    setStep(saved.step === "welcome" || saved.step === "instructions" || saved.step === "done" ? "task" : saved.step);
+  }, []);
+
   const openTask = async () => {
     setTaskLaunchError("");
     try {
+      const saved = readSavedSession();
+      if (saved) {
+        // A refresh must reopen the participant's original session rather than
+        // generate a different code that their already-linked account rejects.
+        sessionStorage.setItem("vetweb-study-state", saved.state);
+        setPairingCode(saved.pairingCode);
+        setTaskLaunchUrl(saved.launchUrl);
+        setTaskOpened(true);
+        window.open(saved.launchUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
       const response = await fetch("/api/v1/study-sessions", { method: "POST" });
       if (!response.ok) throw new Error("Study session is not configured");
-      const { launchUrl, state, pairingCode: code } = await response.json() as { launchUrl: string; state: string; pairingCode: string };
+      const { launchUrl, state, pairingCode: code, expiresAt } = await response.json() as { launchUrl: string; state: string; pairingCode: string; expiresAt: number };
       sessionStorage.setItem("vetweb-study-state", state);
       setPairingCode(code);
       setTaskLaunchUrl(launchUrl || vetWebTaskUrl);
       setTaskOpened(true);
+      window.localStorage.setItem(savedSessionKey, JSON.stringify({
+        state,
+        pairingCode: code,
+        launchUrl: launchUrl || vetWebTaskUrl,
+        expiresAt,
+        step: "task",
+      } satisfies SavedStudySession));
       window.open(launchUrl || vetWebTaskUrl, "_blank", "noopener,noreferrer");
     } catch { setTaskLaunchError("The secure VetWeb connection is not configured yet. Please contact the study team."); }
   };
@@ -173,6 +232,8 @@ export default function StudyFlow() {
         return;
       }
       setReference(result.referenceCode);
+      window.localStorage.removeItem(savedSessionKey);
+      sessionStorage.removeItem("vetweb-study-state");
       move("done");
     } catch { setSurveyMessage("Your raffle details could not be saved. Please try again."); }
     finally { setSavingRaffle(false); }
